@@ -3,20 +3,8 @@
 require_once('db.php');
 require_once('../model/Task.php');
 require_once('../model/Response.php');
+require_once('../middleware/middleware.php');
 
-try{
-    $writeDB = DB::connectWriteDB();
-    $readDB = DB::connectReadDB();
-}
-catch(PDOException $ex){
-    error_log("Connection Error -".$ex, 0);
-    $response = new Response();
-    $response->setHttpStatusCode(500);
-    $response->setSuccess(false);
-    $response->addMessage("Database Connection Error");
-    $response->send();
-    exit;
-}
 
 if(array_key_exists("taskid",$_GET)){
     $taskid = $_GET['taskid'];
@@ -31,8 +19,9 @@ if(array_key_exists("taskid",$_GET)){
 
     if($_SERVER['REQUEST_METHOD'] === 'GET'){
         try{
-            $query = $readDB->prepare('SELECT id, title, description, DATE_FORMAT(deadline, "%d/%m/%Y %H:%i") as deadline, completed from tbltasks where id = :taskid');
+            $query = $readDB->prepare('SELECT id, title, description, DATE_FORMAT(deadline, "%d/%m/%Y %H:%i") as deadline, completed from tbltasks where id = :taskid and userid = :userid');
             $query->bindParam(':taskid', $taskid, PDO::PARAM_INT);
+            $query->bindParam(':userid', $returned_userId, PDO::PARAM_INT);
             $query->execute();
             $rowCount = $query->rowCount();
 
@@ -128,11 +117,11 @@ if(array_key_exists("taskid",$_GET)){
                 $queryFields .= "title = :title, ";
             }
             if(isset($jsonData->description)){
-                $description_upadated = true;
+                $description_updated = true;
                 $queryFields .= "description = :description, ";
             }
-            if(isset($jsonData->iscompleted)){
-                $deadline_updated = true;
+            if(isset($jsonData->completed)){
+                $completed_updated = true;
                 $queryFields .= "completed = :completed, ";
             }
             if(isset($jsonData->deadline)){
@@ -151,11 +140,38 @@ if(array_key_exists("taskid",$_GET)){
                 exit;
             }
 
-            $query = $readDB->prepare('SELECT title, description, DATE_FORMAT(deadline, %Y:%m:%d %H:%i) as deadline, completed WHERE id = :id');
+            $query = $readDB->prepare('SELECT userid from tbltasks WHERE id = :id');
             $query->bindParam(':id', $taskid, PDO::PARAM_INT);
             $query->execute();
 
             $rowCount = $query->rowCount();
+            if($rowCount === 0){
+                $response = new Response();
+                $response->setHttpStatusCode(405);
+                $response->setSuccess(false);
+                $response->addMessage("No task associated to this user ID");
+                $response->send();
+                exit;
+            }
+            $row = $query->fetch(PDO::FETCH_ASSOC);
+            $selected_userID = $row['userid'];
+            
+            if($returned_userId !== $selected_userID){
+                $response = new Response();
+                $response->setHttpStatusCode(405);
+                $response->setSuccess(false);
+                $response->addMessage("You have no permission to edit others task");
+                $response->send();
+                exit;  
+            }
+            
+            $query = $readDB->prepare('SELECT id, title, description, DATE_FORMAT(deadline, "%Y:%m:%d %H:%i") as deadline, completed FROM tbltasks WHERE id = :id');
+            //$query->bindParam(':userid', $selected_userID, PDO::PARAM_INT);
+            $query->bindParam(':id', $taskid, PDO::PARAM_INT);
+            $query->execute();
+            
+            $rowCount = $query->rowCount();
+            
             if($rowCount === 0){
                 $response = new Response();
                 $response->setHttpStatusCode(404);
@@ -165,36 +181,65 @@ if(array_key_exists("taskid",$_GET)){
                 exit;
             }
             
-            while($row = $query->fetch(PDO::FETCH_ASSOC)){
+            while($row = $query->fetch(PDO::FETCH_ASSOC)) {
+                // create new task object
                 $task = new Task($row['id'], $row['title'], $row['description'], $row['deadline'], $row['completed']);
-            }
-            $queryString = "UPDATE tbltask set ".$queryFields." WHERE id = :taskid ";
-
-            $query = $writeDB->prepare($queryString);
-
-            if($title_update === true){
+              }
+              
+              // create the query string including any query fields
+              $queryString = "update tbltasks set ".$queryFields." where id = :taskid";
+              // prepare the query
+              $query = $writeDB->prepare($queryString);
+              
+              // if title has been provided
+              if($title_updated === true) {
+                // set task object title to given value (checks for valid input)
                 $task->setTitle($jsonData->title);
+                // get the value back as the object could be handling the return of the value differently to
+                // what was provided
                 $up_title = $task->getTitle();
+                // bind the parameter of the new value from the object to the query (prevents SQL injection)
                 $query->bindParam(':title', $up_title, PDO::PARAM_STR);
-            }
-            if($description_updated === true){
+              }
+              
+              // if description has been provided
+              if($description_updated === true) {
+                // set task object description to given value (checks for valid input)
                 $task->setDescription($jsonData->description);
+                // get the value back as the object could be handling the return of the value differently to
+                // what was provided
                 $up_description = $task->getDescription();
+                // bind the parameter of the new value from the object to the query (prevents SQL injection)
                 $query->bindParam(':description', $up_description, PDO::PARAM_STR);
-            }
-            if($deadline_updated === true){
+              }
+              
+              // if deadline has been provided
+              if($deadline_updated === true) {
+                // set task object deadline to given value (checks for valid input)
                 $task->setDeadline($jsonData->deadline);
+                // get the value back as the object could be handling the return of the value differently to
+                // what was provided
                 $up_deadline = $task->getDeadline();
+                // bind the parameter of the new value from the object to the query (prevents SQL injection)
                 $query->bindParam(':deadline', $up_deadline, PDO::PARAM_STR);
-            }
-            if($completed_updated === true){
-                $task->setDeadline($jsonData->deadline);
-                $up_deadline = $task->getDeadline();
-                $query->bindParam(':deadline', $up_deadline, PDO::PARAM_STR);
-            }
-            $query->bindParam(':id', $taskid, PDO::PARAM_INT);
-            $query->execute();
-
+              }
+              
+              // if completed has been provided
+              if($completed_updated === true) {
+                // set task object completed to given value (checks for valid input)
+                $task->setCompleted($jsonData->completed);
+                // get the value back as the object could be handling the return of the value differently to
+                // what was provided
+                $up_completed= $task->getCompleted();
+                // bind the parameter of the new value from the object to the query (prevents SQL injection)
+                $query->bindParam(':completed', $up_completed, PDO::PARAM_STR);
+              }
+              
+              // bind the task id provided in the query string
+              $query->bindParam(':taskid', $taskid, PDO::PARAM_INT);
+              // run the query
+                $query->execute();
+              
             $rowCount = $query->rowCount();
 
             if($rowCount === 0){
@@ -205,8 +250,7 @@ if(array_key_exists("taskid",$_GET)){
                 $response->send();
                 exit;
             }
-        
-            $query = $writeDB->prepare('SELECT id, title, description, DATE_FORMAT(deadline, "%Y-%m-%d %H:%i"), completed FROM tbltasks WHERE id = :id');
+            $query = $writeDB->prepare('SELECT id, title, description, DATE_FORMAT(deadline, "%Y:%m:%d %H:%i"), completed FROM tbltasks WHERE id = :id');
             $query->bindParam(':id', $taskid, PDO::PARAM_INT);
             $query->execute();
 
@@ -226,7 +270,7 @@ if(array_key_exists("taskid",$_GET)){
                 $taskArray[] = $task->returnTaskAsArray();
             }
             $returnData = array();
-            $returnData['rows_returned'] = $rowsCount;
+            $returnData['rows_returned'] = $rowCount;
             $returnData['tasks'] = $taskArray; 
 
             $response = new Response();
@@ -238,11 +282,12 @@ if(array_key_exists("taskid",$_GET)){
             exit;
         }
         catch(PDOException $ex){
-            error_log("Database query error- ".$ex, 0);
+            //error_log("Database query error- ".$ex, 0);
             $response = new Response();
             $response->setHttpStatusCode(500);
             $response->setSuccess(false);
             $response->addMessage("Failed to update tasks - check you data for info");
+            $response->addMessage($ex);
             $response->send();
             exit;
         }
@@ -421,7 +466,8 @@ elseif(array_key_exists("completed",$_GET)){
 elseif(empty($_GET)){
     if($_SERVER['REQUEST_METHOD'] === 'GET'){
         try{
-            $query = $readDB->prepare('select id, title, description, DATE_FORMAT(deadline, "%d/%m/%Y %H:%i") as deadline, completed from tbltasks');
+            $query = $readDB->prepare('select id, title, description, DATE_FORMAT(deadline, "%d/%m/%Y %H:%i") as deadline, completed from tbltasks WHERE userid = :userid');
+            $query->bindParam(':userid', $returned_userId);
             $query->execute();
             $rowCount = $query->rowCount();
             $taskArray = array();
@@ -462,24 +508,7 @@ elseif(empty($_GET)){
   
     elseif($_SERVER['REQUEST_METHOD'] === 'POST'){
         try{
-            if($_SERVER['CONTENT_TYPE'] !== 'application/json'){
-                $response = new Response();
-                $response->setHttpStatusCode(400);
-                $response->setSuccess(false);
-                $response->addMessage("Content type header is not in JSON format");
-                $response->send();
-                exit;
-            }
-            $rawPOSTData = file_get_contents('php://input');
-
-            if(!$jsonData = json_decode($rawPOSTData)){
-                $response = new Response();
-                $response->setHttpStatusCode(400);
-                $response->setSuccess(false);
-                $response->addMessage("Request body is not valid JSON");
-                $response->send();
-                exit;
-            }
+            require_once('../requirefile/checkjson.php');
             if(!isset($jsonData->title) || !isset($jsonData->completed)){
                 $response = new Response();
                 $response->setHttpStatusCode(400);

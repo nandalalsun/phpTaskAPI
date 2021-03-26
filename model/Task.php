@@ -57,7 +57,7 @@
         }
 
         public function setDeadline($deadline){
-            if(($deadline !== null) && date_format(date_create_from_format('d/m/Y H:i', $deadline), 'd/m/Y H:i') != $deadline){
+            if(($deadline !== null) && date_format(date_create_from_format('Y:m:d H:i', $deadline), 'Y:m:d H:i') != $deadline){
                 throw new TaskException("Task Deadline DateTime Error");
             }
             $this->_deadline = $deadline;
