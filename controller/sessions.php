@@ -262,6 +262,7 @@ if (array_key_exists("sessionId", $_GET)) {
         $returnData['access_token_expire_in'] = $access_token_expiry_second / 60 . " Min";
         $returnData['refreshtoken'] = $refreshtoken;
         $returnData['refresh_token_expire_in'] = $refresh_token_expiry_seconds / 3600 / 24 . " Days";
+        $returnData['user_id'] = $returned_id;
 
         $response = new Response();
         $response->setHttpStatusCode(201);

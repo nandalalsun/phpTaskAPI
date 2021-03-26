@@ -6,13 +6,15 @@
         private $_description;
         private $_deadline;
         private $_completed;
+        private $_userid;
 
-        public function __construct($id, $title, $description, $deadline, $completed){
+        public function __construct($id, $title, $description, $deadline, $completed, $userid){
             $this->setId($id);
             $this->setTitle($title);
             $this->setDescription($description);
             $this->setDeadline($deadline);
             $this->setCompleted($completed);
+            $this->setUserId($userid);
         }
 
         public function getId(){
@@ -33,6 +35,14 @@
 
         public function getCompleted(){
             return $this->_completed;
+        }
+
+        public function getUserId(){
+            return $this->_userid;
+        }
+
+        public function setUserid($userid){
+            $this->_userid = $userid;
         }
 
         public function setId($id){
@@ -77,6 +87,7 @@
             $task['description'] = $this->getDescription();
             $task['deadline'] = $this->getDeadline();
             $task['competed'] = $this->getCompleted();
+            $task['userid'] = $this->getUserId();
             return $task;
         }
     }

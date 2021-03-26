@@ -17,7 +17,7 @@ try{
     $query = $writeDB->prepare('SELECT userid, accesstokenexpiry, loginattempts, useractive FROM tblsessions, tblusers WHERE tblsessions.userid = tblusers.id and accesstoken = :accesstoken');
     $query->bindParam(':accesstoken', $accesstoken, PDO::PARAM_STR);
     $query->execute();
-
+    
     $rowCount = $query->rowCount();
 
     if($rowCount === 0){
