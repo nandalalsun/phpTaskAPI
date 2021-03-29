@@ -8,23 +8,27 @@ RewriteCond %{REQUEST_FILENAME} !-f
 
 
 #Get_Task
-RewriteRule ^tasks/([0-9]+)$ controller/task.php?taskid=$1 [L]
+RewriteRule ^tasks/([0-9]+)$        controller/task.php?taskid=$1 [L]
 
-RewriteRule ^tasks/complete$ controller/task.php?completed=Y [L]
+RewriteRule ^tasks/complete$        controller/task.php?completed=Y [L]
 
-RewriteRule ^tasks/incomplete$ controller/task.php?completed=N [L]
+RewriteRule ^tasks/incomplete$      controller/task.php?completed=N [L]
 
-RewriteRule ^tasks/page/([0-9]+)$ controller/task.php?page=$1 [L]
+RewriteRule ^tasks/page/([0-9]+)$   controller/task.php?page=$1 [L]
 
-RewriteRule ^tasks controller/task.php [L]
+RewriteRule ^tasks                  controller/task.php [L]
 
 #Create User
-RewriteRule ^users$ controller/user.php [L]
+RewriteRule ^users$                 controller/user.php [L]
 
 #Create_Session
-RewriteRule ^session$ controller/sessions.php [L]
+RewriteRule ^session$               controller/sessions.php [L]
 
 #Delete_Session
-RewriteRule ^session/(.*)$  controller/sessions.php?sessionId=$1 [L]
+RewriteRule ^session/(.*)$          controller/sessions.php?sessionId=$1 [L]
 
+#Image
+RewriteRule ^tasks/([0-9]+)$/images/([0-9]+)$/attrubutes$  controller/image.php?taskid=$1&imageid=$2&attributes=true [L]  #Handle image if request for image attributes
+RewriteRule ^tasks/([0-9]+)/images/([0-9]+)$  controller/image.php?taskid=$1&imageid=$2 [L]                              #Handle image itself
+RewriteRule ^task/([0-9]+)$         controller/image.php?taskid=$1 [L]                                                          #Handle image request for post
 

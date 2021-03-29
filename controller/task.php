@@ -5,7 +5,6 @@ require_once('../model/Task.php');
 require_once('../model/Response.php');
 require_once('../middleware/middleware.php');
 
-
 if(array_key_exists("taskid",$_GET)){
     $taskid = $_GET['taskid'];
     if($taskid == '' || !is_numeric($taskid)){

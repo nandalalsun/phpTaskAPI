@@ -1,26 +1,26 @@
-<?php 
-    require_once('../controller/db.php');
-    require_once('../model/Response.php');
+<?php
+require_once('../controller/db.php');
+require_once('../model/Response.php');
 
-    if(!isset($_SERVER['HTTP_AUTHORIZATION']) || strlen($_SERVER['HTTP_AUTHORIZATION']) < 1 ){
-        $response = new Response();
-        $response->setHttpStatusCode(401);
-        $response->setSuccess(false);
-        (!isset($_SERVER['HTTP_AUTHORIZATION']) ? $response->addMessage("Access token is missing from header") : false);
-        (strlen($_SERVER['HTTP_AUTHORIZATION']) < 1 ? $response->addMessage("Access token cannot be blank") : false);
-        $response->send();
-        exit;
-    }
-    $accesstoken = $_SERVER['HTTP_AUTHORIZATION'];
+if (!isset($_SERVER['HTTP_AUTHORIZATION']) || strlen($_SERVER['HTTP_AUTHORIZATION']) < 1) {
+    $response = new Response();
+    $response->setHttpStatusCode(401);
+    $response->setSuccess(false);
+    (!isset($_SERVER['HTTP_AUTHORIZATION']) ? $response->addMessage("Access token is missing from header") : false);
+    (strlen($_SERVER['HTTP_AUTHORIZATION']) < 1 ? $response->addMessage("Access token cannot be blank") : false);
+    $response->send();
+    exit;
+}
+$accesstoken = $_SERVER['HTTP_AUTHORIZATION'];
 
-try{
+try {
     $query = $writeDB->prepare('SELECT userid, accesstokenexpiry, loginattempts, useractive FROM tblsessions, tblusers WHERE tblsessions.userid = tblusers.id and accesstoken = :accesstoken');
     $query->bindParam(':accesstoken', $accesstoken, PDO::PARAM_STR);
     $query->execute();
-    
+
     $rowCount = $query->rowCount();
 
-    if($rowCount === 0){
+    if ($rowCount === 0) {
         $response = new Response();
         $response->setHttpStatusCode(401);
         $response->setSuccess(false);
@@ -34,8 +34,8 @@ try{
     $returned_accesstokenexpiry = $row['accesstokenexpiry'];
     $returned_loginattempts = $row['loginattempts'];
     $returned_useractive = $row['useractive'];
-    
-    if($returned_useractive !== 'Y'){
+
+    if ($returned_useractive !== 'Y') {
         $response = new Response();
         $response->setHttpStatusCode(401);
         $response->setSuccess(false);
@@ -44,7 +44,7 @@ try{
         exit;
     }
 
-    if($returned_loginattempts >= 3){
+    if ($returned_loginattempts >= 3) {
         $response = new Response();
         $response->setHttpStatusCode(401);
         $response->setSuccess(false);
@@ -53,7 +53,7 @@ try{
         exit;
     }
 
-    if(strtotime($returned_accesstokenexpiry) < time()){
+    if (strtotime($returned_accesstokenexpiry) < time()) {
         $response = new Response();
         $response->setHttpStatusCode(401);
         $response->setSuccess(false);
@@ -61,8 +61,7 @@ try{
         $response->send();
         exit;
     }
-}
-catch(PDOException $ex){
+} catch (PDOException $ex) {
     $response = new Response();
     $response->setHttpStatusCode(500);
     $response->setSuccess(false);
