@@ -226,7 +226,7 @@ if (array_key_exists("sessionId", $_GET)) {
         $accesstoken = base64_encode(bin2hex(openssl_random_pseudo_bytes(24)) . time());
         $refreshtoken = base64_encode(bin2hex(openssl_random_pseudo_bytes(24)) . time());
 
-        $access_token_expiry_second = 1200;
+        $access_token_expiry_second = 86400;
         $refresh_token_expiry_seconds = 1209600;
     } catch (PDOException $ex) {
         $response = new Response();
